@@ -8,45 +8,70 @@ export async function middleware(req: NextRequest) {
   const res = NextResponse.next()
   const supabase = createMiddlewareClient<Database>({ req, res })
 
-  // Check auth state
+  // Check Supabase Auth session (for OAuth - currently disabled)
   const {
-    data: { session },
+    data: { session: supabaseSession },
   } = await supabase.auth.getSession()
+
+  // Check custom auth session (Directory-based - currently active)
+  const authSessionCookie = req.cookies.get("auth_session")
+  let customSession: { email: string; directory_id: number; is_admin: boolean; timestamp: number } | null = null
+
+  if (authSessionCookie?.value) {
+    try {
+      customSession = JSON.parse(authSessionCookie.value)
+      // Validate session is not expired (7 days)
+      const sevenDaysAgo = Date.now() - 60 * 60 * 24 * 7 * 1000
+      if (customSession && customSession.timestamp < sevenDaysAgo) {
+        customSession = null
+      }
+    } catch {
+      customSession = null
+    }
+  }
+
+  // User is authenticated if they have either Supabase session OR custom session
+  const isAuthenticated = !!supabaseSession || !!customSession
 
   // Public routes that don't require authentication
   const isPublicRoute = PUBLIC_ROUTES.some((route) => req.nextUrl.pathname.startsWith(route))
 
-  // Auth routes
+  // Auth routes (API routes, OAuth callbacks)
   const isAuthRoute = AUTH_ROUTES.some((route) => req.nextUrl.pathname.startsWith(route))
 
+  // API routes should bypass middleware checks
+  if (req.nextUrl.pathname.startsWith("/api/")) {
+    return res
+  }
+
   // If user is not authenticated and trying to access a protected route
-  if (!session && !isPublicRoute && !isAuthRoute) {
+  if (!isAuthenticated && !isPublicRoute && !isAuthRoute) {
     return NextResponse.redirect(new URL("/login", req.url))
   }
 
-  // If user is authenticated but not verified
-  if (session && !isPublicRoute && !isAuthRoute) {
-    // Get user data
-    const { data: userData } = await supabase
-      .from("Users")
-      .select("verification, is_admin")
-      .eq("id", session.user.id)
-      .single()
+  // If user is authenticated, check user data and role
+  if (isAuthenticated && !isPublicRoute && !isAuthRoute) {
+    let isAdmin = false
 
-    // If user is not in the database or not verified, redirect to pending verification
-    if (!userData || !userData.verification) {
-      // Allow access to pending-verification page
-      if (req.nextUrl.pathname === "/pending-verification") {
-        return res
-      }
-      return NextResponse.redirect(new URL("/pending-verification", req.url))
+    // Get admin status from session
+    if (supabaseSession) {
+      // For Supabase Auth, check Users table
+      const { data } = await supabase
+        .from("Users")
+        .select("is_admin")
+        .eq("id", supabaseSession.user.id)
+        .single()
+      isAdmin = data?.is_admin || false
+    } else if (customSession) {
+      // For Directory-based session, use is_admin from session
+      isAdmin = customSession.is_admin || false
     }
 
     // Role-based access control
     const path = req.nextUrl.pathname
 
     // Admin routes
-    if (path.startsWith("/admin") && !userData.is_admin) {
+    if (path.startsWith("/admin") && !isAdmin) {
       return NextResponse.redirect(new URL("/", req.url))
     }
   }
@@ -55,6 +80,10 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  // Exclude static files, Next.js internals, and OAuth callback routes
+  // OAuth callbacks must bypass middleware to allow session establishment
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|auth/callback|auth/callback-login).*)",
+  ],
 }
 

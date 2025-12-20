@@ -128,10 +128,12 @@ docker compose logs -f
    
    ```env
    NEXT_PUBLIC_SUPABASE_URL=https://sstmwvnstzwaopqjkurm.supabase.co
-   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNzdG13dm5zdHp3YW9wcWprdXJtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY1MjM2ODcsImV4cCI6MjA2MjA5OTY4N30.owoNICStx_2uejWtHjHvcZmq-5i5vn_62SSQLtQBKMA
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_9A-6eeiFNGVJ1mZpVOX44A_fPrizqS9
    RESEND_API_KEY=re_VGFWxY7Z_BtYWLnAcjMywb2NVkGXou3fj
    EMAIL_FROM=DLSU Chorale <noreply@dlsuchorale.com>
    ```
+   
+   **Important:** The middleware requires `NEXT_PUBLIC_SUPABASE_ANON_KEY` (not `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY`).
 
 3. **Run development server**:
    ```bash
@@ -172,4 +174,120 @@ Press `Ctrl+C` in the terminal where the server is running.
 - **Attendance Overview**: [http://localhost:3000/attendance-overview](http://localhost:3000/attendance-overview)
 - **Profile**: [http://localhost:3000/profile](http://localhost:3000/profile)
 - **Settings**: [http://localhost:3000/settings](http://localhost:3000/settings)
+
+---
+
+## Authentication: Google Sign-In
+
+### Overview
+
+The application supports **Google OAuth authentication** for both login and registration. Users can sign in or register using their Google account, which provides a seamless authentication experience.
+
+### How It Works
+
+#### For Login (`/login`)
+1. User clicks **"Continue with Google"** button
+2. Redirected to Google OAuth consent screen
+3. After authentication, redirected to `/auth/callback-login`
+4. System checks if user exists in the database
+5. If verified, user is redirected to their dashboard
+6. If not verified, user is redirected to pending verification page
+
+#### For Registration (`/register`)
+1. User fills out registration form (role, committee, etc.)
+2. User clicks **"Continue with Google"** button
+3. Registration data is stored temporarily in localStorage
+4. Redirected to Google OAuth consent screen
+5. After authentication, redirected to `/auth/callback`
+6. System checks if email exists in Directory table
+7. If valid, redirected to `/auth/setup` to complete profile creation
+8. User profile is created with pending verification status
+9. Admin must verify the account before full access is granted
+
+### Supabase OAuth Configuration
+
+Google OAuth is configured through **Supabase Dashboard**. No additional environment variables are required beyond the standard Supabase configuration.
+
+#### Required Setup in Supabase Dashboard
+
+1. **Navigate to Authentication → Providers** in your Supabase project
+2. **Enable Google Provider**
+3. **Configure Google OAuth**:
+   - Add your Google OAuth Client ID
+   - Add your Google OAuth Client Secret
+   - Set authorized redirect URLs:
+     - `http://localhost:3000/auth/callback` (for registration)
+     - `http://localhost:3000/auth/callback-login` (for login)
+     - Your production URLs (e.g., `https://yourdomain.com/auth/callback`)
+
+#### Getting Google OAuth Credentials
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Create a new project or select an existing one
+3. Enable **Google+ API**
+4. Go to **Credentials** → **Create Credentials** → **OAuth 2.0 Client ID**
+5. Configure OAuth consent screen (if not already done)
+6. Add authorized redirect URIs:
+   - `https://[your-project-ref].supabase.co/auth/v1/callback`
+7. Copy the **Client ID** and **Client Secret**
+8. Paste them into Supabase Dashboard → Authentication → Providers → Google
+
+### OAuth Flow Details
+
+#### Login Flow
+```
+User → /login → Click "Continue with Google" 
+→ Google OAuth → /auth/callback-login 
+→ Check Directory → Check Users table 
+→ Redirect to dashboard or pending verification
+```
+
+#### Registration Flow
+```
+User → /register → Fill form → Click "Continue with Google"
+→ Store form data in localStorage
+→ Google OAuth → /auth/callback
+→ Check Directory → /auth/setup
+→ Create user profile → Redirect to dashboard (pending verification)
+```
+
+### Security Features
+
+- ✅ **Email verification**: Only emails in the Directory table can register
+- ✅ **Admin verification**: New users require admin approval before full access
+- ✅ **Session management**: Secure session handling via Supabase Auth
+- ✅ **Protected routes**: Middleware ensures authenticated users only
+- ✅ **Role-based access**: Admin and member roles are enforced
+
+### Local Development Considerations
+
+- **Redirect URLs**: Ensure localhost URLs are added to Supabase redirect URLs
+- **HTTPS**: Google OAuth requires HTTPS in production (localhost is exempt)
+- **Testing**: Use test Google accounts or ensure your Google OAuth app allows test users
+
+### Troubleshooting
+
+**"OAuth error" or redirect fails:**
+- Verify redirect URLs match exactly in Supabase Dashboard
+- Check that Google OAuth credentials are correct
+- Ensure Google OAuth app is not in testing mode (or add test users)
+
+**"Email not in directory" error:**
+- User's email must exist in the `Directory` table in Supabase
+- Contact admin to add email to directory
+
+**Session not persisting:**
+- Clear browser cookies and try again
+- Check that `.env.local` has correct Supabase credentials
+- Verify middleware is working correctly
+
+### Code Implementation
+
+The Google OAuth implementation uses:
+- **Frontend**: `supabase.auth.signInWithOAuth({ provider: "google" })`
+- **Callbacks**: Server-side route handlers in `/app/auth/callback*`
+- **Session**: Managed automatically by Supabase Auth helpers
+- **Middleware**: Protects routes and handles authentication state
+
+No additional code changes are needed - the OAuth flow is fully integrated!
 

@@ -64,18 +64,18 @@ export async function deleteExcuseRequest(userID: string, date: string) {
 
 // DIRECTORY
 export async function getDirectoryEntryByEmail(email: string) {
-  return supabase.from("Directory").select("*").eq("email", email).single()
+  return supabase.from("directory").select("*").eq("email", email).single()
 }
-export async function createDirectoryEntry(entry: Omit<Database["public"]["Tables"]["Directory"]["Insert"], "id">) {
-  return supabase.from("Directory").insert([entry])
+export async function createDirectoryEntry(entry: Omit<Database["public"]["Tables"]["directory"]["Insert"], "id">) {
+  return supabase.from("directory").insert([entry])
 }
 export async function updateDirectoryEntry(
   id: number,
-  updates: Partial<Database["public"]["Tables"]["Directory"]["Update"]>,
+  updates: Partial<Database["public"]["Tables"]["directory"]["Update"]>,
 ) {
-  return supabase.from("Directory").update(updates).eq("id", id)
+  return supabase.from("directory").update(updates).eq("id", id)
 }
 export async function deleteDirectoryEntry(id: number) {
-  return supabase.from("Directory").delete().eq("id", id)
+  return supabase.from("directory").delete().eq("id", id)
 }
 

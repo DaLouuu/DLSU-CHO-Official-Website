@@ -3,6 +3,31 @@ import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
 import type { Database, Status } from "@/types/database.types"
 import { sendNotification } from "@/lib/services/notifications"
+import { getAuthSession } from "@/lib/auth/session"
+
+// Helper function to check admin status
+async function checkAdminStatus(): Promise<boolean> {
+  const cookieStore = cookies()
+  const supabase = createRouteHandlerClient<Database>({ cookies: () => cookieStore })
+
+  // Check Supabase Auth session first
+  const {
+    data: { session },
+  } = await supabase.auth.getSession()
+
+  if (session) {
+    const { data: adminData } = await supabase.from("Users").select("is_admin").eq("id", session.user.id).single()
+    return adminData?.is_admin || false
+  }
+
+  // Check Directory-based custom session
+  const customSession = await getAuthSession()
+  if (customSession) {
+    return customSession.is_admin || false
+  }
+
+  return false
+}
 
 // GET /api/admin/excuses?section=soprano
 export async function GET(request: Request) {
@@ -12,16 +37,8 @@ export async function GET(request: Request) {
   const supabase = createRouteHandlerClient<Database>({ cookies })
 
   // Verify admin status
-  const {
-    data: { session },
-  } = await supabase.auth.getSession()
-  if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  }
-
-  const { data: adminData } = await supabase.from("Users").select("is_admin").eq("id", session.user.id).single()
-
-  if (!adminData?.is_admin) {
+  const isAdmin = await checkAdminStatus()
+  if (!isAdmin) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
@@ -63,24 +80,31 @@ export async function PATCH(request: Request, { params }: { params: { userId: st
   const supabase = createRouteHandlerClient<Database>({ cookies })
 
   // Verify admin status
+  const isAdmin = await checkAdminStatus()
+  if (!isAdmin) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+  }
+
+  // Get current user ID for approved_by field
+  const cookieStore = cookies()
   const {
     data: { session },
   } = await supabase.auth.getSession()
-  if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  }
-
-  const { data: adminData } = await supabase.from("Users").select("is_admin").eq("id", session.user.id).single()
-
-  if (!adminData?.is_admin) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-  }
+  const customSession = await getAuthSession()
+  const currentUserId = session?.user.id || customSession?.directory_id.toString() || ""
 
   // Get user details for notification
   const { data: userData } = await supabase.from("Users").select("name").eq("id", userId).single()
 
-  // Get user email
-  const { data: directoryData } = await supabase.from("Directory").select("email").eq("id", userId).single()
+  // Get user email from Directory
+  // Note: userId might be from Users table (string), so we try to match it
+  // If userId is numeric, use it directly; otherwise we might need to join through Users table
+  const userIdNum = parseInt(userId)
+  const { data: directoryData } = await supabase
+      .from("directory")
+    .select("email")
+    .eq("id", userIdNum)
+    .single()
 
   // Update request status
   const { data, error } = await supabase
@@ -88,7 +112,7 @@ export async function PATCH(request: Request, { params }: { params: { userId: st
     .update({
       status,
       notes,
-      approved_by: session.user.id,
+      approved_by: currentUserId,
       approved_at: new Date().toISOString(),
     })
     .eq("userID", userId)

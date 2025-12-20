@@ -33,9 +33,9 @@ export default function SetupPage() {
 
         const registrationData = JSON.parse(registrationDataStr)
 
-        // Check if user email matches the one in Directory
+        // Check if user email matches the one in directory
         const { data: directoryData, error: directoryError } = await supabase
-          .from("Directory")
+          .from("directory")
           .select("id")
           .eq("email", session.user.email)
           .single()
@@ -69,13 +69,9 @@ export default function SetupPage() {
         // Clear registration data
         localStorage.removeItem("registrationData")
 
-        // Redirect based on user role
-        if (userData.is_admin) {
-          router.push("/admin/attendance-overview")
-        } else {
-          router.push("/attendance-form")
-        }
-
+        // New users are not verified yet, so redirect to pending verification
+        // After admin verification, they will be redirected to their role-specific page
+        router.push("/pending-verification")
         toast.success("Registration successful! Awaiting admin verification.")
       } catch (error) {
         console.error("Setup error:", error)

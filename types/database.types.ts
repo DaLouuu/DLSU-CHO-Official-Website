@@ -102,7 +102,7 @@ export interface Database {
           approved_at?: string | null
         }
       }
-      Directory: {
+      directory: {
         Row: {
           id: number
           email: string
@@ -114,6 +114,24 @@ export interface Database {
         Update: {
           id?: number
           email?: string
+        }
+      }
+      profiles: {
+        Row: {
+          id: string | number
+          email: string
+          school_id: string
+          // Add other profile fields as needed
+        }
+        Insert: {
+          id?: string | number
+          email: string
+          school_id: string
+        }
+        Update: {
+          id?: string | number
+          email?: string
+          school_id?: string
         }
       }
     }

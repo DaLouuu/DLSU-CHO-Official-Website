@@ -20,7 +20,7 @@ export default function RegisterPage() {
             <div className="flex flex-col items-center space-y-6 text-center mb-8">
               <WhiteLogo className="mb-2" />
               <h1 className="text-3xl font-bold tracking-tight text-white">Create an account</h1>
-              <p className="text-sm text-white/80">Register with your Google account</p>
+              <p className="text-sm text-white/80">Registration is currently disabled</p>
             </div>
             <RegisterForm />
           </div>

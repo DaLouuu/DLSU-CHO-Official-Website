@@ -57,9 +57,17 @@ export function DashboardNav({ isAdmin = false }: { isAdmin?: boolean }) {
 
   const handleSignOut = async () => {
     try {
+      // Sign out from Supabase Auth (if using OAuth)
       await supabase.auth.signOut()
+      
+      // Sign out from custom auth (email + school ID)
+      await fetch("/api/auth/logout", {
+        method: "POST",
+      })
+      
       toast.success("Signed out successfully")
       router.push("/login")
+      router.refresh()
     } catch (error) {
       console.error("Error signing out:", error)
       toast.error("Failed to sign out")
