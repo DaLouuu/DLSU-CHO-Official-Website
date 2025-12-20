@@ -1,0 +1,28 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: dlsu-chorale-web
+    ports:
+      - "3000:3000"
+    volumes:
+      # Mount source code for hot reload
+      - .:/app
+      # Exclude node_modules from mount (use container's)
+      - /app/node_modules
+      - /app/.next
+    environment:
+      - NODE_ENV=development
+      - NEXT_TELEMETRY_DISABLED=1
+      # Environment variables (optional - will use defaults from constants.ts if not set)
+      - SUPABASE_URL=${SUPABASE_URL:-}
+      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY:-}
+      - RESEND_API_KEY=${RESEND_API_KEY:-}
+    # Optional: Load from .env file if it exists
+    env_file:
+      - .env
+    restart: unless-stopped
+    stdin_open: true
+    tty: true
+
