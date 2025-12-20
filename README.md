@@ -1,24 +1,10 @@
 # DLSU Chorale Attendance System
 
-[![Deployed on Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-black?style=for-the-badge&logo=vercel)](https://vercel.com/dalouuus-projects/v0-google-oauth-registration)
-[![Built with v0](https://img.shields.io/badge/Built%20with-v0.dev-black?style=for-the-badge)](https://v0.dev/chat/projects/N9R8BPqtegI)
+Official attendance management system for DLSU Chorale members.
 
 ## Overview
 
-This repository will stay in sync with your deployed chats on [v0.dev](https://v0.dev).
-Any changes you make to your deployed app will be automatically pushed to this repository from [v0.dev](https://v0.dev).
-
-## Deployment
-
-The project is live at:
-
-**[https://vercel.com/dalouuus-projects/v0-google-oauth-registration](https://vercel.com/dalouuus-projects/v0-google-oauth-registration)**
-
-## Build your app
-
-Continue building your app on:
-
-**[https://v0.dev/chat/projects/N9R8BPqtegI](https://v0.dev/chat/projects/N9R8BPqtegI)**
+A modern web application for managing member attendance, excuse requests, and administrative tasks for the DLSU Chorale organization.
 
 ---
 
@@ -121,23 +107,30 @@ docker compose logs -f
 
 ---
 
-## Local Development (Without Docker)
+## Running the Website Locally
 
 ### Prerequisites
 
-- Node.js 20+ installed
-- pnpm installed (`npm install -g pnpm`)
+- **Node.js 20+** installed ([Download](https://nodejs.org/))
+- **pnpm** installed (`npm install -g pnpm`)
 
-### Setup
+### Setup Steps
 
 1. **Install dependencies**:
    ```bash
    pnpm install
    ```
 
-2. **Create environment file** (optional):
-   ```bash
-   cp env.example .env
+2. **Create environment file** (required for Supabase):
+   
+   A `.env.local` file has been created automatically with the required Supabase configuration.
+   If you need to recreate it, create a file named `.env.local` in the project root with:
+   
+   ```env
+   NEXT_PUBLIC_SUPABASE_URL=https://sstmwvnstzwaopqjkurm.supabase.co
+   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNzdG13dm5zdHp3YW9wcWprdXJtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY1MjM2ODcsImV4cCI6MjA2MjA5OTY4N30.owoNICStx_2uejWtHjHvcZmq-5i5vn_62SSQLtQBKMA
+   RESEND_API_KEY=re_VGFWxY7Z_BtYWLnAcjMywb2NVkGXou3fj
+   EMAIL_FROM=DLSU Chorale <noreply@dlsuchorale.com>
    ```
 
 3. **Run development server**:
@@ -145,7 +138,31 @@ docker compose logs -f
    pnpm dev
    ```
 
-4. **Open browser**: [http://localhost:3000](http://localhost:3000)
+4. **Open your browser**: 
+   - Main page: [http://localhost:3000](http://localhost:3000)
+   - Login: [http://localhost:3000/login](http://localhost:3000/login)
+   - Register: [http://localhost:3000/register](http://localhost:3000/register)
+   - Attendance Form: [http://localhost:3000/attendance-form](http://localhost:3000/attendance-form)
+
+### Stopping the Server
+
+Press `Ctrl+C` in the terminal where the server is running.
+
+### Common Errors
+
+**"Missing Supabase environment variables" or middleware errors:**
+- Ensure `.env.local` exists in the project root
+- Restart the dev server after creating/updating `.env.local`
+- Check that variable names match exactly (case-sensitive)
+
+**Port 3000 already in use:**
+- Stop other services using port 3000, or
+- Run on a different port: `pnpm dev -- -p 3001`
+
+**Module not found errors:**
+- Delete `node_modules` and `.next` folders
+- Run `pnpm install` again
+- Restart the dev server
 
 ## Webpage Addresses
 
@@ -153,4 +170,6 @@ docker compose logs -f
 - **Login Page**: [http://localhost:3000/login](http://localhost:3000/login)
 - **Attendance Form**: [http://localhost:3000/attendance-form](http://localhost:3000/attendance-form)
 - **Attendance Overview**: [http://localhost:3000/attendance-overview](http://localhost:3000/attendance-overview)
+- **Profile**: [http://localhost:3000/profile](http://localhost:3000/profile)
+- **Settings**: [http://localhost:3000/settings](http://localhost:3000/settings)
 

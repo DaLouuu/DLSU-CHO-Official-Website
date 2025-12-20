@@ -9,7 +9,6 @@ const inter = Inter({ subsets: ["latin"] })
 export const metadata: Metadata = {
   title: "DLSU Chorale Attendance System",
   description: "Attendance management system for DLSU Chorale members",
-    generator: 'v0.dev'
 }
 
 export default function RootLayout({

@@ -2,12 +2,20 @@
  * Application-wide constants
  * 
  * Environment variables take precedence over hardcoded values.
- * For local development, create a .env file with these variables.
+ * For local development, create a .env.local file with these variables.
+ * 
+ * Supports both NEXT_PUBLIC_ prefixed (Next.js client-side) and non-prefixed variables.
  */
 
 // Supabase Configuration
-export const SUPABASE_URL = process.env.SUPABASE_URL || "https://sstmwvnstzwaopqjkurm.supabase.co"
+// Support both NEXT_PUBLIC_ (for client-side) and regular env vars (for server-side)
+export const SUPABASE_URL =
+  process.env.NEXT_PUBLIC_SUPABASE_URL ||
+  process.env.SUPABASE_URL ||
+  "https://sstmwvnstzwaopqjkurm.supabase.co"
 export const SUPABASE_ANON_KEY =
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY ||
   process.env.SUPABASE_ANON_KEY ||
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNzdG13dm5zdHp3YW9wcWprdXJtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY1MjM2ODcsImV4cCI6MjA2MjA5OTY4N30.owoNICStx_2uejWtHjHvcZmq-5i5vn_62SSQLtQBKMA"
 
