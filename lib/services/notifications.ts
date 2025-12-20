@@ -1,7 +1,8 @@
 import { Resend } from "resend"
 import { toast } from "sonner"
+import { RESEND_API_KEY, EMAIL_FROM } from "@/config/constants"
 
-const resend = new Resend("re_VGFWxY7Z_BtYWLnAcjMywb2NVkGXou3fj")
+const resend = new Resend(RESEND_API_KEY)
 
 export type NotificationType = "excuse_approved" | "excuse_rejected" | "excuse_pending"
 
@@ -71,7 +72,7 @@ export async function sendNotification(options: NotificationOptions) {
     }[type]
 
     await resend.emails.send({
-      from: "DLSU Chorale <noreply@dlsuchorale.com>",
+      from: EMAIL_FROM,
       to: recipientEmail,
       subject,
       text: emailContent,
@@ -80,3 +81,4 @@ export async function sendNotification(options: NotificationOptions) {
     console.error("Failed to send email notification:", error)
   }
 }
+
