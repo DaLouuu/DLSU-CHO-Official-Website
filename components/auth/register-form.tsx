@@ -10,7 +10,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
-import { supabase } from "@/lib/supabase"
+import { supabase } from "@/lib/api/supabase"
 
 export function RegisterForm() {
   const router = useRouter()

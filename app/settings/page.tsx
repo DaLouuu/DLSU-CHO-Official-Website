@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
-import { supabase } from "@/lib/supabase"
+import { supabase } from "@/lib/api/supabase"
 import { useRouter } from "next/navigation"
 
 export default function SettingsPage() {

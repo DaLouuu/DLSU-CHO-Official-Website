@@ -7,7 +7,7 @@ import { DashboardNav } from "@/components/layout/dashboard-nav"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
-import { supabase } from "@/lib/supabase"
+import { supabase } from "@/lib/api/supabase"
 
 interface UserProfile {
   id: string

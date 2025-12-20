@@ -2,7 +2,7 @@ import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs"
 import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
 import type { Database, Status } from "@/types/database.types"
-import { sendNotification } from "@/lib/notifications"
+import { sendNotification } from "@/lib/services/notifications"
 
 // GET /api/admin/excuses?section=soprano
 export async function GET(request: Request) {

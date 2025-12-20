@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { GalleryBackground } from "@/components/ui/gallery-background"
 import { WhiteLogo } from "@/components/ui/white-logo"
-import { supabase } from "@/lib/supabase"
+import { supabase } from "@/lib/api/supabase"
 import { toast } from "sonner"
 
 export default function LoginPage() {

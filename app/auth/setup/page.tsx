@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { PageHeader } from "@/components/layout/page-header"
 import { PageFooter } from "@/components/layout/page-footer"
-import { supabase } from "@/lib/supabase"
+import { supabase } from "@/lib/api/supabase"
 import { toast } from "sonner"
 
 export default function SetupPage() {

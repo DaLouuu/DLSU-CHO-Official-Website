@@ -6,7 +6,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Calendar, ClipboardCheck, Home, User, Settings, LogOut } from "lucide-react"
-import { supabase } from "@/lib/supabase"
+import { supabase } from "@/lib/api/supabase"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 
