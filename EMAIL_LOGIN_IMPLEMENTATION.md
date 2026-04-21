@@ -287,3 +287,5 @@ To restore Google OAuth authentication:
    - Use Supabase Auth password hashing
    - Support both email+ID and email+password login
 
+
+

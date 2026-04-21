@@ -1,13 +1,13 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 import { PageHeader } from "@/components/layout/page-header"
 import { PageFooter } from "@/components/layout/page-footer"
 import { DashboardNav } from "@/components/layout/dashboard-nav"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
-import { supabase } from "@/lib/api/supabase"
 
 interface UserProfile {
   id: string
@@ -22,48 +22,92 @@ interface UserProfile {
   email: string
 }
 
+/**
+ * Profile Page
+ * 
+ * TEMPORARY AUTH APPROACH:
+ * - Uses Directory-based authentication (email + school ID login)
+ * - Does NOT use Supabase Auth sessions
+ * - Loads profile via API route that reads auth_session cookie
+ * - Gracefully redirects to /login if unauthenticated
+ */
 export default function ProfilePage() {
+  const router = useRouter()
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     async function fetchProfile() {
       try {
-        // Get current user
-        const {
-          data: { session },
-          error: sessionError,
-        } = await supabase.auth.getSession()
-
-        if (sessionError || !session) {
-          throw new Error("No active session")
-        }
-
-        // Get user profile from Users table
-        const { data: userData, error: userError } = await supabase
-          .from("Users")
-          .select("*")
-          .eq("id", session.user.id)
-          .single()
-
-        if (userError) {
-          throw userError
-        }
-
-        // Set profile with user data and email from session
-        setProfile({
-          ...userData,
-          email: session.user.email || "",
+        // Load profile from API route
+        // API route uses Directory-based session (auth_session cookie)
+        // This is a temporary replacement for Supabase Auth
+        const response = await fetch("/api/profile", {
+          method: "GET",
+          credentials: "include", // Include cookies in request
+          headers: {
+            "Content-Type": "application/json",
+          },
         })
+
+        if (!response.ok) {
+          // Try to get error message from response
+          let errorMessage = "Failed to fetch profile"
+          try {
+            const contentType = response.headers.get("content-type")
+            if (contentType && contentType.includes("application/json")) {
+              const errorData = await response.json()
+              errorMessage = errorData.error || errorMessage
+            } else {
+              // If response is not JSON, use status text
+              errorMessage = response.statusText || errorMessage
+            }
+          } catch (parseError) {
+            // If parsing fails, use status text
+            errorMessage = response.statusText || errorMessage
+            console.error("Error parsing error response:", parseError)
+          }
+
+          console.error("Profile fetch failed:", {
+            status: response.status,
+            statusText: response.statusText,
+            error: errorMessage
+          })
+
+          if (response.status === 401) {
+            // Unauthenticated - redirect to login
+            router.push("/login")
+            return
+          }
+
+          // For other errors, show message but don't crash
+          console.error("Profile fetch error:", errorMessage)
+          // Don't throw - let the UI show the "Profile not found" message
+          setProfile(null)
+          return
+        }
+
+        // Parse successful response
+        const contentType = response.headers.get("content-type")
+        if (!contentType || !contentType.includes("application/json")) {
+          console.error("Profile API returned non-JSON response")
+          setProfile(null)
+          return
+        }
+
+        const userData = await response.json()
+        setProfile(userData)
       } catch (error) {
         console.error("Error fetching profile:", error)
+        // On error, don't redirect immediately - let user see the error state
+        setProfile(null)
       } finally {
         setLoading(false)
       }
     }
 
     fetchProfile()
-  }, [])
+  }, [router])
 
   // Helper function to format role/committee/section for display
   const formatValue = (value: string | null) => {
