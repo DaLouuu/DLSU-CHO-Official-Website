@@ -1,7 +1,8 @@
 import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs"
 import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
-import type { Database, Status } from "@/types/database.types"
+// import type { Database, Status } from "@/types/database.types"  // OLD — Status renamed to ExcuseStatus
+import type { Database, ExcuseStatus } from "@/types/database.types"
 import { sendNotification } from "@/lib/services/notifications"
 import { getAuthSession } from "@/lib/auth/session"
 
@@ -16,7 +17,8 @@ async function checkAdminStatus(): Promise<boolean> {
   } = await supabase.auth.getSession()
 
   if (session) {
-    const { data: adminData } = await supabase.from("Users").select("is_admin").eq("id", session.user.id).single()
+    // OLD: supabase.from("Users").select("is_admin").eq("id", session.user.id)
+    const { data: adminData } = await supabase.from("profiles").select("is_admin").eq("id", session.user.id).single()
     return adminData?.is_admin || false
   }
 
@@ -42,81 +44,67 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
-  // Fetch requests by section
-  const query = supabase
-    .from("ExcuseRequests")
+  // OLD: supabase.from("ExcuseRequests").select(`*, Users (name, section)`)
+  // Fetch excuse requests joined with profiles for member name and section
+  const { data, error } = await supabase
+    .from("excuse_requests")
     .select(`
       *,
-      Users (
-        name,
-        section
+      profiles!account_id_fk (
+        first_name,
+        last_name,
+        nickname,
+        voice_section,
+        school_id
       )
     `)
     .eq("status", "Pending")
-
-  if (section) {
-    query.eq("Users.section", section)
-  }
-
-  const { data, error } = await query
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  return NextResponse.json(data)
+  // Filter by section in JS since Supabase doesn't support filtering on joined columns via query builder
+  const filtered = section
+    ? data?.filter((r) => {
+        const p = r.profiles as { voice_section?: string } | null
+        return p?.voice_section?.toLowerCase() === section.toLowerCase()
+      })
+    : data
+
+  return NextResponse.json(filtered)
 }
 
-// PATCH /api/admin/excuses/:userId/:date
-export async function PATCH(request: Request, { params }: { params: { userId: string; date: string } }) {
-  const { userId, date } = params
-  const { status, notes }: { status: Status; notes?: string } = await request.json()
+// PATCH /api/admin/excuses — body: { requestId, status, notes }
+export async function PATCH(request: Request) {
+  // OLD signature: (request, { params: { userId, date } })
+  const { requestId, status, notes }: { requestId: number; status: ExcuseStatus; notes?: string } =
+    await request.json()
 
-  // Validate status
   if (!["Approved", "Rejected", "Pending"].includes(status)) {
     return NextResponse.json({ error: "Invalid status value" }, { status: 400 })
   }
 
   const supabase = createRouteHandlerClient<Database>({ cookies })
 
-  // Verify admin status
   const isAdmin = await checkAdminStatus()
   if (!isAdmin) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
-  // Get current user ID for approved_by field
-  const cookieStore = cookies()
-  const {
-    data: { session },
-  } = await supabase.auth.getSession()
-  const customSession = await getAuthSession()
-  const currentUserId = session?.user.id || customSession?.directory_id.toString() || ""
+  // Fetch existing request to get account_id_fk for notification lookup
+  const { data: existing } = await supabase
+    .from("excuse_requests")
+    .select("account_id_fk, excused_date")
+    .eq("request_id", requestId)
+    .maybeSingle()
 
-  // Get user details for notification
-  const { data: userData } = await supabase.from("Users").select("name").eq("id", userId).single()
-
-  // Get user email from Directory
-  // Note: userId might be from Users table (string), so we try to match it
-  // If userId is numeric, use it directly; otherwise we might need to join through Users table
-  const userIdNum = parseInt(userId)
-  const { data: directoryData } = await supabase
-      .from("directory")
-    .select("email")
-    .eq("id", userIdNum)
-    .single()
-
-  // Update request status
+  // Update status (approved_by / approved_at columns don't exist yet — omitted until migration adds them)
+  // OLD: supabase.from("ExcuseRequests").update({ status, notes, approved_by, approved_at }).eq("userID", ...).eq("date", ...)
   const { data, error } = await supabase
-    .from("ExcuseRequests")
-    .update({
-      status,
-      notes,
-      approved_by: currentUserId,
-      approved_at: new Date().toISOString(),
-    })
-    .eq("userID", userId)
-    .eq("date", date)
+    .from("excuse_requests")
+    .update({ status, notes })
+    .eq("request_id", requestId)
     .select()
     .single()
 
@@ -124,17 +112,27 @@ export async function PATCH(request: Request, { params }: { params: { userId: st
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  // Send notification
-  if (directoryData?.email && userData?.name) {
-    await sendNotification({
-      type: status === "Approved" ? "excuse_approved" : status === "Rejected" ? "excuse_rejected" : "excuse_pending",
-      recipientEmail: directoryData.email,
-      recipientName: userData.name,
-      details: {
-        date,
-        notes,
-      },
-    })
+  // Send notification if we can resolve member email
+  if (existing?.account_id_fk) {
+    // OLD: supabase.from("Users").select("name").eq("id", userId)
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("first_name, last_name, email, school_id")
+      .eq("id", existing.account_id_fk)
+      .maybeSingle()
+
+    if (profile?.email) {
+      const recipientName = [profile.first_name, profile.last_name].filter(Boolean).join(" ")
+      await sendNotification({
+        type: status === "Approved" ? "excuse_approved" : status === "Rejected" ? "excuse_rejected" : "excuse_pending",
+        recipientEmail: profile.email,
+        recipientName,
+        details: {
+          date: existing.excused_date ?? "",
+          notes,
+        },
+      })
+    }
   }
 
   return NextResponse.json(data)

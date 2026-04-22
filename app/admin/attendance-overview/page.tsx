@@ -1,6 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
+import type { Database } from "@/types/database.types"
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, addWeeks, subWeeks, isSameDay } from "date-fns"
 import { ChevronLeft, ChevronRight, ClipboardCheck } from "lucide-react"
 import { PageHeader } from "@/components/layout/page-header"
@@ -15,59 +17,19 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { ExcuseDetailView } from "@/components/admin/excuse-detail-view"
 import Link from "next/link"
 
-// Update the mockExcuses array to match the format in the image
-const mockExcuses = [
-  {
-    id: "1",
-    name: "Tralalero Tralala",
-    voiceSection: "alto",
-    voiceNumber: 1,
-    type: "ABSENT",
-    date: new Date(2025, 4, 8), // September 21, 2025
-  },
-  {
-    id: "2",
-    name: "Tung Tung Tung Sahur",
-    voiceSection: "tenor",
-    voiceNumber: 1,
-    type: "ABSENT",
-    date: new Date(2025, 4, 6), // September 21, 2025
-  },
-  {
-    id: "3",
-    name: "Tenorino Cappuccino",
-    voiceSection: "tenor",
-    voiceNumber: 1,
-    type: "ABSENT",
-    date: new Date(2025, 4, 7), // September 21, 2025
-  },
-  {
-    id: "4",
-    name: "Dana Guillarte",
-    voiceSection: "soprano",
-    voiceNumber: 1,
-    type: "ABSENT",
-    date: new Date(2025, 4, 8), // September 22, 2025
-  },
-  {
-    id: "5",
-    name: "Marian Ariaga",
-    voiceSection: "alto",
-    voiceNumber: 2,
-    type: "LATE",
-    date: new Date(2025, 4, 9), // September 23, 2025
-  },
-  {
-    id: "6",
-    name: "Kean Genota",
-    voiceSection: "bass",
-    voiceNumber: 2,
-    type: "ABSENT",
-    date: new Date(2025, 4, 7), // September 24, 2025
-  },
-]
+// OLD: excuses array removed — replaced with real Supabase data below
+
+type ExcuseRow = {
+  id: string
+  name: string
+  voiceSection: string
+  type: string
+  date: Date
+}
 
 export default function AttendanceOverviewPage() {
+  const supabase = createClientComponentClient<Database>()
+
   const today = new Date()
   const [currentDate, setCurrentDate] = useState(today)
   const [selectedDate, setSelectedDate] = useState(today)
@@ -78,8 +40,47 @@ export default function AttendanceOverviewPage() {
     }),
   )
   const [activeVoice, setActiveVoice] = useState("all")
-  const [selectedExcuse, setSelectedExcuse] = useState(null)
+  const [selectedExcuse, setSelectedExcuse] = useState<ExcuseRow | null>(null)
   const [isDetailOpen, setIsDetailOpen] = useState(false)
+  const [excuses, setExcuses] = useState<ExcuseRow[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function fetchExcuses() {
+      setLoading(true)
+      const { data, error } = await supabase
+        .from("excuse_requests")
+        .select(`
+          request_id,
+          excused_date,
+          excuse_type,
+          status,
+          profiles!account_id_fk (
+            first_name,
+            last_name,
+            voice_section
+          )
+        `)
+        .eq("status", "Pending")
+
+      if (!error && data) {
+        const rows: ExcuseRow[] = data.map((r) => {
+          const profile = r.profiles as { first_name?: string; last_name?: string; voice_section?: string } | null
+          const name = [profile?.first_name, profile?.last_name].filter(Boolean).join(" ") || "Unknown"
+          return {
+            id: String(r.request_id),
+            name,
+            voiceSection: profile?.voice_section?.toLowerCase() ?? "unknown",
+            type: r.excuse_type?.toUpperCase() ?? "ABSENT",
+            date: r.excused_date ? new Date(r.excused_date) : new Date(),
+          }
+        })
+        setExcuses(rows)
+      }
+      setLoading(false)
+    }
+    fetchExcuses()
+  }, [])
 
   // Update week when navigating
   const navigateWeek = (direction) => {
@@ -96,7 +97,7 @@ export default function AttendanceOverviewPage() {
 
   // Get excuses for the selected date and filter by voice section
   const getFilteredExcuses = () => {
-    return mockExcuses.filter(
+    return excuses.filter(
       (excuse) =>
         isSameDay(excuse.date, selectedDate) && (activeVoice === "all" || excuse.voiceSection === activeVoice),
     )
@@ -104,7 +105,7 @@ export default function AttendanceOverviewPage() {
 
   // Count excuses for each day in the week
   const getExcuseCountForDay = (day) => {
-    return mockExcuses.filter((excuse) => isSameDay(excuse.date, day)).length
+    return excuses.filter((excuse) => isSameDay(excuse.date, day)).length
   }
 
   // View excuse details
@@ -249,9 +250,10 @@ export default function AttendanceOverviewPage() {
                 </Tabs>
               </div>
 
-              {/* Update the CardContent section to match the simpler format in the image */}
               <CardContent className="pt-4">
-                {getFilteredExcuses().length > 0 ? (
+                {loading ? (
+                  <div className="py-8 text-center text-gray-500">Loading excuses…</div>
+                ) : getFilteredExcuses().length > 0 ? (
                   <div className="space-y-2">
                     {getFilteredExcuses().map((excuse) => (
                       <div
@@ -267,7 +269,7 @@ export default function AttendanceOverviewPage() {
                           <div>
                             <h3 className="font-medium text-gray-900">{excuse.name}</h3>
                             <div className="text-sm text-gray-500 capitalize">
-                              {excuse.voiceSection} {excuse.voiceNumber}
+                              {excuse.voiceSection}
                             </div>
                           </div>
                         </div>
@@ -292,7 +294,7 @@ export default function AttendanceOverviewPage() {
                   </div>
                 )}
 
-                {getFilteredExcuses().length > 0 && (
+                {!loading && getFilteredExcuses().length > 0 && (
                   <div className="mt-4 pt-3 border-t border-gray-200 text-center text-sm text-gray-500">
                     End of List
                   </div>

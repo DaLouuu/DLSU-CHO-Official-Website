@@ -9,17 +9,25 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 
+// OLD UserProfile (matched fictional Users table):
+// interface UserProfile {
+//   id: string; name: string; role: string; committee: string | null
+//   section: string | null; is_admin: boolean; is_performing: boolean
+//   is_executive_board: boolean; admin_role: string | null; email: string
+// }
+
 interface UserProfile {
   id: string
-  name: string
-  role: string
+  email: string | null
+  first_name: string | null
+  last_name: string | null
+  nickname: string | null
+  voice_section: string | null
+  membership_status: string
+  current_term_stat: string
   committee: string | null
-  section: string | null
-  is_admin: boolean
-  is_performing: boolean
-  is_executive_board: boolean
-  admin_role: string | null
-  email: string
+  is_admin: boolean | null
+  school_id: number | null
 }
 
 /**
@@ -128,8 +136,7 @@ export default function ProfilePage() {
 
         <main className="flex-1 px-4 py-6 md:px-6 md:py-8">
           <div className="mx-auto max-w-4xl">
-            {/* Dashboard Navigation */}
-            <DashboardNav isAdmin={profile?.is_admin || false} />
+            <DashboardNav isAdmin={profile?.is_admin ?? false} />
 
             <h1 className="text-2xl font-bold text-[#09331f] md:text-3xl mb-6">My Profile</h1>
 
@@ -147,22 +154,30 @@ export default function ProfilePage() {
                   <CardContent className="p-6">
                     <div className="flex flex-col md:flex-row gap-6 items-center md:items-start">
                       <Avatar className="h-24 w-24 border-2 border-[#09331f]/20">
-                        <AvatarImage src="/images/profile-1.jpg" alt={profile.name} />
-                        <AvatarFallback className="text-2xl">{profile.name.charAt(0)}</AvatarFallback>
+                        <AvatarImage src="/images/profile-1.jpg" alt={profile.first_name ?? "Member"} />
+                        <AvatarFallback className="text-2xl">
+                          {profile.first_name?.charAt(0) ?? "?"}
+                        </AvatarFallback>
                       </Avatar>
 
                       <div className="flex-1 space-y-4">
                         <div>
-                          <h2 className="text-2xl font-bold">{profile.name}</h2>
+                          <h2 className="text-2xl font-bold">
+                            {[profile.first_name, profile.last_name].filter(Boolean).join(" ") || "—"}
+                          </h2>
+                          {profile.nickname && (
+                            <p className="text-sm text-gray-400">"{profile.nickname}"</p>
+                          )}
                           <p className="text-gray-500">{profile.email}</p>
                         </div>
 
                         <div className="flex flex-wrap gap-2">
-                          <Badge className="bg-[#09331f]">{profile.is_admin ? "Admin" : "Member"}</Badge>
-                          {profile.is_performing && <Badge className="bg-blue-500">Performing</Badge>}
-                          {profile.is_executive_board && <Badge className="bg-purple-500">Executive Board</Badge>}
-                          {profile.admin_role && (
-                            <Badge className="bg-amber-500">{formatValue(profile.admin_role)}</Badge>
+                          <Badge className="bg-[#09331f]">{profile.is_admin ? "Admin" : profile.membership_status}</Badge>
+                          {profile.current_term_stat === "Performing" && (
+                            <Badge className="bg-blue-500">Performing</Badge>
+                          )}
+                          {profile.current_term_stat?.startsWith("Graduating") && (
+                            <Badge className="bg-amber-500">Graduating</Badge>
                           )}
                         </div>
                       </div>
@@ -178,8 +193,18 @@ export default function ProfilePage() {
                   <CardContent className="p-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
-                        <h3 className="text-sm font-medium text-gray-500">Role</h3>
-                        <p className="text-lg font-medium">{formatValue(profile.role)}</p>
+                        <h3 className="text-sm font-medium text-gray-500">Membership Status</h3>
+                        <p className="text-lg font-medium">{formatValue(profile.membership_status)}</p>
+                      </div>
+
+                      <div>
+                        <h3 className="text-sm font-medium text-gray-500">Term Status</h3>
+                        <p className="text-lg font-medium">{formatValue(profile.current_term_stat)}</p>
+                      </div>
+
+                      <div>
+                        <h3 className="text-sm font-medium text-gray-500">Voice Section</h3>
+                        <p className="text-lg font-medium">{formatValue(profile.voice_section)}</p>
                       </div>
 
                       <div>
@@ -188,16 +213,9 @@ export default function ProfilePage() {
                       </div>
 
                       <div>
-                        <h3 className="text-sm font-medium text-gray-500">Voice Section</h3>
-                        <p className="text-lg font-medium">{formatValue(profile.section)}</p>
+                        <h3 className="text-sm font-medium text-gray-500">School ID</h3>
+                        <p className="text-lg font-medium">{profile.school_id ?? "—"}</p>
                       </div>
-
-                      {profile.is_admin && profile.admin_role && (
-                        <div>
-                          <h3 className="text-sm font-medium text-gray-500">Admin Role</h3>
-                          <p className="text-lg font-medium">{formatValue(profile.admin_role)}</p>
-                        </div>
-                      )}
                     </div>
                   </CardContent>
                 </Card>

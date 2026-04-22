@@ -42,25 +42,22 @@ export async function GET(request: NextRequest) {
     // Try matching Users.id with directory.id (as string)
     // Note: This is a temporary approach - Users.id should match directory.id.toString()
     // If the relationship is different, adjust the matching logic
-    const directoryIdString = session.directory_id.toString()
-    console.log("Profile API: Searching Users table for id:", directoryIdString)
+    // OLD: supabase.from("Users").select("*").eq("id", directoryIdString)
+    // Users table does not exist — query profiles by school_id instead
+    console.log("Profile API: Searching profiles table for school_id:", session.directory_id)
 
-    const { data: userData, error: userError } = await supabase
-      .from("Users")
+    const { data: profileData, error: profileError } = await supabase
+      .from("profiles")
       .select("*")
-      .eq("id", directoryIdString)
+      .eq("school_id", session.directory_id)
       .maybeSingle()
 
-    if (userError) {
-      console.error("Profile API: Error querying Users table:", userError)
+    if (profileError) {
+      console.error("Profile API: Error querying profiles table:", profileError)
     }
 
-    // If not found by ID match, user might not exist in Users table yet
-    // Return directory-based profile as fallback
-    if (!userData) {
-      console.log("Profile API: User not found in Users table, returning directory-based profile")
-      // User doesn't exist in Users table - return basic profile from directory
-      // This allows the profile page to display even if user hasn't completed full registration
+    if (!profileData) {
+      console.log("Profile API: Profile not found, returning session-based fallback")
       const emailName = session.email.split("@")[0].replace(/_/g, " ")
       const displayName = emailName
         .split(" ")
@@ -70,22 +67,22 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({
         id: session.directory_id.toString(),
         email: session.email,
-        name: displayName,
-        role: session.is_admin ? "admin" : "member",
+        first_name: displayName,
+        last_name: null,
+        nickname: null,
+        voice_section: null,
+        membership_status: "Trainee",
+        current_term_stat: "Non-Performing",
         committee: null,
-        section: null,
         is_admin: session.is_admin,
-        is_performing: false,
-        is_executive_board: false,
-        admin_role: null,
+        school_id: session.directory_id,
       })
     }
 
-    console.log("Profile API: User found in Users table")
-    // Return full user profile with email from session
+    console.log("Profile API: Profile found")
     return NextResponse.json({
-      ...userData,
-      email: session.email,
+      ...profileData,
+      is_admin: session.is_admin,  // always use session value — DB may lag after first migration
     })
   } catch (error) {
     console.error("Profile API: Unexpected error:", error)

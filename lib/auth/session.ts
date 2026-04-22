@@ -55,11 +55,11 @@ export async function getDirectoryFromSession() {
   const cookieStore = cookies()
   const supabase = createRouteHandlerClient<Database>({ cookies: () => cookieStore })
 
-  // Get directory entry
+  // OLD: .eq("id", session.directory_id)  — actual PK column is school_id
   const { data: directoryData, error } = await supabase
-      .from("directory")
+    .from("directory")
     .select("*")
-    .eq("id", session.directory_id)
+    .eq("school_id", session.directory_id)
     .single()
 
   if (error || !directoryData) {

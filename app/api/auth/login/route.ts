@@ -6,24 +6,18 @@ import type { Database } from "@/types/database.types"
 
 /**
  * Email Login API Route
- * 
- * Validates credentials against Directory table and creates a session.
- * This is a temporary replacement for Google OAuth.
- * 
- * Authentication Rules:
- * - Email must exist in Directory table
- * - Admin: id = 12207101 AND email = dana_guillarte@dlsu.edu.ph
- * - All other users are members
+ *
+ * Validates credentials against the directory table and creates a session.
+ * Admin status is determined by the is_admin field in the Users table.
  */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { email } = body
+    const { email, school_id } = body
 
-    // Validate input
-    if (!email) {
+    if (!email || !school_id) {
       return NextResponse.json(
-        { error: "Email is required" },
+        { error: "Email and school ID are required" },
         { status: 400 }
       )
     }
@@ -31,17 +25,21 @@ export async function POST(request: NextRequest) {
     const cookieStore = cookies()
     const supabase = createRouteHandlerClient<Database>({ cookies: () => cookieStore })
 
-    // Query Directory table by email
     const normalizedEmail = email.trim().toLowerCase()
-    
+    const schoolIdNum = parseInt(String(school_id).trim(), 10)
+
+    if (isNaN(schoolIdNum)) {
+      return NextResponse.json({ error: "Invalid email or ID number." }, { status: 401 })
+    }
+
     console.log("=== LOGIN ATTEMPT DEBUG ===")
-    console.log("Searching for email:", normalizedEmail)
-    console.log("Original email from request:", email)
-    
-    // First, try to get the entry - use maybeSingle() to avoid error if not found
+    console.log("Searching for email:", normalizedEmail, "school_id:", schoolIdNum)
+
+    // Match BOTH email and school_id — acts as credential validation
     const { data: directoryEntry, error: directoryError } = await supabase
       .from("directory")
       .select("*")
+      .eq("school_id", schoolIdNum)
       .eq("email", normalizedEmail)
       .maybeSingle()
 
@@ -55,7 +53,8 @@ export async function POST(request: NextRequest) {
         details: directoryError.details,
         hint: directoryError.hint
       } : null,
-      entry: directoryEntry ? { id: directoryEntry.id, email: directoryEntry.email } : null
+      // entry: directoryEntry ? { id: directoryEntry.id, email: directoryEntry.email } : null  // OLD — column is school_id
+      entry: directoryEntry ? { school_id: directoryEntry.school_id, email: directoryEntry.email } : null
     })
 
     // If we got an error (not just "not found"), log it
@@ -80,10 +79,11 @@ export async function POST(request: NextRequest) {
     if (!directoryEntry) {
       console.log("Entry not found with exact match, trying case-insensitive search...")
       
-      // Try getting all entries and filtering (less efficient but more forgiving)
+      // Try matching by school_id + case-insensitive email as fallback
       const { data: allEntries, error: allError } = await supabase
         .from("directory")
-        .select("id, email")
+        .select("school_id, email")
+        .eq("school_id", schoolIdNum)
       
       if (!allError && allEntries) {
         const matchingEntry = allEntries.find(
@@ -96,26 +96,36 @@ export async function POST(request: NextRequest) {
           const { data: fullEntry } = await supabase
             .from("directory")
             .select("*")
-            .eq("id", matchingEntry.id)
+            // .eq("id", matchingEntry.id)  // OLD — column is school_id
+            .eq("school_id", matchingEntry.school_id)
             .single()
-          
+
           if (fullEntry) {
-            // Use the found entry
+            // .from("Users").select("is_admin").eq("id", ...)  // OLD — Users table does not exist
+            const { data: profileRecord } = await supabase
+              .from("profiles")
+              .select("is_admin")
+              .eq("school_id", fullEntry.school_id)
+              .maybeSingle()
+            const isAdmin = profileRecord?.is_admin ?? false
+
             const sessionData = {
               email: fullEntry.email,
-              directory_id: fullEntry.id,
-              is_admin: fullEntry.id === 12207101 && fullEntry.email.toLowerCase() === "dana_guillarte@dlsu.edu.ph",
+              // directory_id: fullEntry.id,  // OLD — column is school_id
+              directory_id: fullEntry.school_id,
+              is_admin: isAdmin,
               timestamp: Date.now(),
             }
-            
+
             const response = NextResponse.json(
-              { 
+              {
                 success: true,
                 user: {
                   email: fullEntry.email,
-                  id: fullEntry.id,
+                  // id: fullEntry.id,  // OLD — column is school_id
+                  id: fullEntry.school_id,
                 },
-                redirect: sessionData.is_admin ? "/admin/attendance-overview" : "/attendance-overview",
+                redirect: isAdmin ? "/admin/attendance-overview" : "/attendance-overview",
               },
               { status: 200 }
             )
@@ -144,13 +154,17 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check if user is admin
-    // Admin: id = 12207101 AND email = dana_guillarte@dlsu.edu.ph
-    const isAdmin = directoryEntry.id === 12207101 && 
-                    directoryEntry.email.toLowerCase() === "dana_guillarte@dlsu.edu.ph"
+    // Look up admin status from profiles table (Users table does not exist)
+    // OLD: const { data: userRecord } = await supabase.from("Users").select("is_admin").eq("id", directoryEntry.id.toString()).maybeSingle()
+    const { data: profileRecord } = await supabase
+      .from("profiles")
+      .select("is_admin")
+      .eq("school_id", directoryEntry.school_id)
+      .maybeSingle()
+    const isAdmin = profileRecord?.is_admin ?? false
 
     // Determine redirect path
-    let redirectPath = "/attendance-overview" // Default for members
+    let redirectPath = "/attendance-overview"
     if (isAdmin) {
       redirectPath = "/admin/attendance-overview"
     }
@@ -158,17 +172,19 @@ export async function POST(request: NextRequest) {
     // Create a secure session cookie with directory information
     const sessionData = {
       email: directoryEntry.email,
-      directory_id: directoryEntry.id,
+      // directory_id: directoryEntry.id,  // OLD — column is school_id
+      directory_id: directoryEntry.school_id,
       is_admin: isAdmin,
       timestamp: Date.now(),
     }
 
     const response = NextResponse.json(
-      { 
+      {
         success: true,
         user: {
           email: directoryEntry.email,
-          id: directoryEntry.id,
+          // id: directoryEntry.id,  // OLD — column is school_id
+          id: directoryEntry.school_id,
         },
         redirect: redirectPath,
       },

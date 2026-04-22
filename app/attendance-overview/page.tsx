@@ -1,6 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
+import type { Database, AttendanceLogStatus } from "@/types/database.types"
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay } from "date-fns"
 import { PageHeader } from "@/components/layout/page-header"
 import { PageFooter } from "@/components/layout/page-footer"
@@ -10,9 +12,47 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
 
+type AttendanceRecord = { date: Date; status: string }
+
 export default function AttendanceOverviewPage() {
+  const supabase = createClientComponentClient<Database>()
   const today = new Date()
   const [currentMonth, setCurrentMonth] = useState(today)
+
+  // OLD mock data removed — replaced with real Supabase fetch below
+  // const attendanceData = [
+  //   { date: new Date(2025, 4, 3), status: "present" }, ...
+  // ]
+
+  const [attendanceData, setAttendanceData] = useState<AttendanceRecord[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function fetchAttendance() {
+      setLoading(true)
+      // Step 1: get the current user's profile UUID via the profile API
+      const profileRes = await fetch("/api/profile", { credentials: "include" })
+      if (!profileRes.ok) { setLoading(false); return }
+      const profile = await profileRes.json()
+      const profileId: string = profile.id
+
+      // Step 2: fetch all attendance_logs for this profile
+      const { data, error } = await supabase
+        .from("attendance_logs")
+        .select("created_at, log_status")
+        .eq("account_id_fk", profileId)
+
+      if (!error && data) {
+        const records: AttendanceRecord[] = data.map((r) => ({
+          date: new Date(r.created_at),
+          status: r.log_status?.toLowerCase() ?? "present",
+        }))
+        setAttendanceData(records)
+      }
+      setLoading(false)
+    }
+    fetchAttendance()
+  }, [])
 
   // Generate days for the current month
   const daysInMonth = eachDayOfInterval({
@@ -20,24 +60,12 @@ export default function AttendanceOverviewPage() {
     end: endOfMonth(currentMonth),
   })
 
-  // Mock attendance data
-  const attendanceData = [
-    { date: new Date(2025, 4, 3), status: "present" },
-    { date: new Date(2025, 4, 7), status: "absent" },
-    { date: new Date(2025, 4, 10), status: "late" },
-    { date: new Date(2025, 4, 15), status: "present" },
-    { date: new Date(2025, 4, 21), status: "present" },
-    { date: new Date(2025, 4, 28), status: "absent" },
-  ]
-
-  // Get status for a specific day
-  const getAttendanceStatus = (day) => {
+  const getAttendanceStatus = (day: Date) => {
     const record = attendanceData.find((item) => isSameDay(item.date, day))
     return record ? record.status : null
   }
 
-  // Navigate to previous/next month
-  const navigateMonth = (direction) => {
+  const navigateMonth = (direction: number) => {
     const newMonth = new Date(currentMonth)
     newMonth.setMonth(newMonth.getMonth() + direction)
     setCurrentMonth(newMonth)
@@ -138,26 +166,30 @@ export default function AttendanceOverviewPage() {
                 <CardTitle className="text-xl font-bold text-[#09331f]">Attendance Summary</CardTitle>
               </CardHeader>
               <CardContent className="p-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="bg-green-100 p-4 rounded-lg text-center">
-                    <p className="text-green-800 font-medium">Present</p>
-                    <p className="text-2xl font-bold text-green-600">
-                      {attendanceData.filter((item) => item.status === "present").length}
-                    </p>
+                {loading ? (
+                  <div className="py-6 text-center text-gray-500">Loading attendance…</div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="bg-green-100 p-4 rounded-lg text-center">
+                      <p className="text-green-800 font-medium">Present</p>
+                      <p className="text-2xl font-bold text-green-600">
+                        {attendanceData.filter((item) => item.status === "present").length}
+                      </p>
+                    </div>
+                    <div className="bg-amber-100 p-4 rounded-lg text-center">
+                      <p className="text-amber-800 font-medium">Late</p>
+                      <p className="text-2xl font-bold text-amber-600">
+                        {attendanceData.filter((item) => item.status === "late").length}
+                      </p>
+                    </div>
+                    <div className="bg-red-100 p-4 rounded-lg text-center">
+                      <p className="text-red-800 font-medium">Absent</p>
+                      <p className="text-2xl font-bold text-red-600">
+                        {attendanceData.filter((item) => item.status === "absent").length}
+                      </p>
+                    </div>
                   </div>
-                  <div className="bg-amber-100 p-4 rounded-lg text-center">
-                    <p className="text-amber-800 font-medium">Late</p>
-                    <p className="text-2xl font-bold text-amber-600">
-                      {attendanceData.filter((item) => item.status === "late").length}
-                    </p>
-                  </div>
-                  <div className="bg-red-100 p-4 rounded-lg text-center">
-                    <p className="text-red-800 font-medium">Absent</p>
-                    <p className="text-2xl font-bold text-red-600">
-                      {attendanceData.filter((item) => item.status === "absent").length}
-                    </p>
-                  </div>
-                </div>
+                )}
               </CardContent>
             </Card>
           </div>

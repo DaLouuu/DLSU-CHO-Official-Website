@@ -52,27 +52,41 @@ export async function middleware(req: NextRequest) {
   // If user is authenticated, check user data and role
   if (isAuthenticated && !isPublicRoute && !isAuthRoute) {
     let isAdmin = false
+    let isVerified = false
 
-    // Get admin status from session
     if (supabaseSession) {
-      // For Supabase Auth, check Users table
-      const { data } = await supabase
-        .from("Users")
+      // Supabase OAuth session — look up profiles by uuid id
+      // OLD: supabase.from("Users").select("is_admin").eq("id", supabaseSession.user.id)
+      const { data: profile } = await supabase
+        .from("profiles")
         .select("is_admin")
         .eq("id", supabaseSession.user.id)
-        .single()
-      isAdmin = data?.is_admin || false
+        .maybeSingle()
+      isAdmin = profile?.is_admin ?? false
+      isVerified = !!profile  // profile exists → verified
     } else if (customSession) {
-      // For Directory-based session, use is_admin from session
+      // Directory-based session — is_admin comes from session cookie (set at login)
       isAdmin = customSession.is_admin || false
+
+      // Verify the profile actually exists in the profiles table
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("school_id")
+        .eq("school_id", customSession.directory_id)
+        .maybeSingle()
+      isVerified = !!profile
     }
 
-    // Role-based access control
     const path = req.nextUrl.pathname
 
-    // Admin routes
+    // Unverified users can only access pending-verification
+    if (!isVerified && !path.startsWith("/pending-verification")) {
+      return NextResponse.redirect(new URL("/pending-verification", req.url))
+    }
+
+    // Admin routes require is_admin = true
     if (path.startsWith("/admin") && !isAdmin) {
-      return NextResponse.redirect(new URL("/", req.url))
+      return NextResponse.redirect(new URL("/unauthorized", req.url))
     }
   }
 

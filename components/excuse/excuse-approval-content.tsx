@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { format } from "date-fns"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ExcuseList } from "@/components/excuse/excuse-list"
 import { HistoryList } from "@/components/excuse/history-list"
@@ -17,171 +18,88 @@ export function ExcuseApprovalContent() {
   const [excuseToDecline, setExcuseToDecline] = useState<ExcuseItem | null>(null)
   const [historyItemToDecline, setHistoryItemToDecline] = useState<HistoryItem | null>(null)
 
-  // Pending excuses data
-  const [excuses, setExcuses] = useState<ExcuseItem[]>([
-    {
-      id: "1",
-      name: "Dana Guillarte",
-      voiceSection: "soprano",
-      voiceNumber: 1,
-      type: "ABSENT",
-      date: "Thursday, May 8, 2025",
-      reason: "Thesis Meeting",
-      notes: "thesis offended",
-      profileImage: "/images/default-avatar.jpg",
-    },
-    {
-      id: "2",
-      name: "Marian Ariaga",
-      voiceSection: "alto",
-      voiceNumber: 1,
-      type: "ABSENT",
-      date: "Thursday, May 8, 2025",
-      reason: "Sick",
-      notes: "masakit likod",
-      profileImage: "/images/default-avatar.jpg",
-    },
-    {
-      id: "3",
-      name: "Kharlene Monloy",
-      voiceSection: "alto",
-      voiceNumber: 2,
-      type: "ABSENT",
-      date: "Thursday, May 8, 2025",
-      reason: "Family Matters",
-      notes: "Family reunion",
-      profileImage: "/images/default-avatar.jpg",
-    },
-    {
-      id: "4",
-      name: "Rovin Montaño",
-      voiceSection: "tenor",
-      voiceNumber: 2,
-      type: "LATE",
-      date: "Friday, May 9, 2025",
-      reason: "Traffic",
-      notes: "Heavy traffic on EDSA",
-      profileImage: "/images/default-avatar.jpg",
-    },
-    {
-      id: "5",
-      name: "Ballerina Cappuccina",
-      voiceSection: "soprano",
-      voiceNumber: 2,
-      type: "ABSENT",
-      date: "Friday, May 9, 2025",
-      reason: "Exam",
-      notes: "Final exam for Math 101",
-      profileImage: "/images/default-avatar.jpg",
-    },
-    {
-      id: "6",
-      name: "Kean Genota",
-      voiceSection: "bass",
-      voiceNumber: 2,
-      type: "LATE",
-      date: "Wednesday, May 7, 2025",
-      reason: "Requirements",
-      notes: "Had to submit a project",
-      profileImage: "/images/default-avatar.jpg",
-    },
-  ])
+  // OLD: hardcoded mock arrays removed — replaced with real API data below
 
-  // History data
-  const [historyItems, setHistoryItems] = useState<HistoryItem[]>([
-    {
-      id: "h1",
-      name: "Tralalero Tralala",
-      voiceSection: "alto",
-      voiceNumber: 1,
-      type: "ABSENT",
-      date: "Tueday, May 7, 2025",
-      status: "DECLINED",
-      declineReason: "Insufficient documentation provided",
-      profileImage: "/images/profile-1.jpg",
-    },
-    {
-      id: "h2",
-      name: "Tralalero Tralala",
-      voiceSection: "alto",
-      voiceNumber: 1,
-      type: "LATE",
-      date: "Tueday, May 7, 2025",
-      status: "APPROVED",
-      profileImage: "/images/profile-1.jpg",
-    },
-    {
-      id: "h3",
-      name: "Tralalero Tralala",
-      voiceSection: "alto",
-      voiceNumber: 1,
-      type: "ABSENT",
-      date: "Tueday, May 7, 2025",
-      status: "APPROVED",
-      profileImage: "/images/profile-1.jpg",
-    },
-    {
-      id: "h4",
-      name: "Tralalero Tralala",
-      voiceSection: "alto",
-      voiceNumber: 1,
-      type: "LATE",
-      date: "Tueday, May 7, 2025",
-      status: "DECLINED",
-      declineReason: "Pattern of tardiness",
-      profileImage: "/images/profile-1.jpg",
-    },
-    {
-      id: "h5",
-      name: "Soprano Example",
-      voiceSection: "soprano",
-      voiceNumber: 2,
-      type: "ABSENT",
-      date: "Tueday, May 7, 2025",
-      status: "APPROVED",
-      profileImage: "/images/profile-1.jpg",
-    },
-    {
-      id: "h6",
-      name: "Tenor Example",
-      voiceSection: "tenor",
-      voiceNumber: 1,
-      type: "LATE",
-      date: "Tueday, May 7, 2025",
-      status: "DECLINED",
-      declineReason: "No valid reason provided",
-      profileImage: "/images/profile-1.jpg",
-    },
-    {
-      id: "h7",
-      name: "Bass Example",
-      voiceSection: "bass",
-      voiceNumber: 3,
-      type: "ABSENT",
-      date: "Tueday, May 7, 2025",
-      status: "APPROVED",
-      profileImage: "/images/profile-1.jpg",
-    },
-  ])
+  const [excuses, setExcuses] = useState<ExcuseItem[]>([])
+  const [historyItems, setHistoryItems] = useState<HistoryItem[]>([])
+  const [loadingPending, setLoadingPending] = useState(true)
+  const [loadingHistory, setLoadingHistory] = useState(true)
 
-  const handleApprove = (id: string) => {
-    // Move the excuse from pending to history with APPROVED status
-    const excuseToMove = excuses.find((excuse) => excuse.id === id)
-    if (excuseToMove) {
-      const newHistoryItem: HistoryItem = {
-        id: `h${Date.now()}`, // Generate a new ID
-        name: excuseToMove.name,
-        voiceSection: excuseToMove.voiceSection,
-        voiceNumber: excuseToMove.voiceNumber,
-        type: excuseToMove.type,
-        date: excuseToMove.date,
-        status: "APPROVED",
-        profileImage: excuseToMove.profileImage,
-      }
-
-      setHistoryItems([newHistoryItem, ...historyItems])
-      setExcuses(excuses.filter((excuse) => excuse.id !== id))
+  // Helper to map raw API row → ExcuseItem
+  function toExcuseItem(r: Record<string, unknown>): ExcuseItem {
+    const p = r.profiles as { first_name?: string; last_name?: string; voice_section?: string } | null
+    const name = [p?.first_name, p?.last_name].filter(Boolean).join(" ") || "Unknown"
+    return {
+      id: String(r.request_id),
+      name,
+      voiceSection: p?.voice_section?.toLowerCase() ?? "unknown",
+      voiceNumber: 1,
+      type: String(r.excuse_type ?? "Absent").toUpperCase(),
+      date: r.excused_date ? format(new Date(r.excused_date as string), "EEEE, MMMM d, yyyy") : "—",
+      reason: String(r.notes ?? ""),
+      notes: String(r.notes ?? ""),
+      profileImage: "/images/default-avatar.jpg",
     }
+  }
+
+  useEffect(() => {
+    async function fetchPending() {
+      setLoadingPending(true)
+      const res = await fetch("/api/admin/excuses", { credentials: "include" })
+      if (res.ok) {
+        const data: Record<string, unknown>[] = await res.json()
+        setExcuses(data.map(toExcuseItem))
+      }
+      setLoadingPending(false)
+    }
+
+    async function fetchHistory() {
+      setLoadingHistory(true)
+      const res = await fetch("/api/admin/excuses/history", { credentials: "include" })
+      if (res.ok) {
+        const data: Record<string, unknown>[] = await res.json()
+        const items: HistoryItem[] = data.map((r) => {
+          const p = r.profiles as { first_name?: string; last_name?: string; voice_section?: string } | null
+          const name = [p?.first_name, p?.last_name].filter(Boolean).join(" ") || "Unknown"
+          return {
+            id: String(r.request_id),
+            name,
+            voiceSection: p?.voice_section?.toLowerCase() ?? "unknown",
+            voiceNumber: 1,
+            type: String(r.excuse_type ?? "Absent").toUpperCase(),
+            date: r.excused_date ? format(new Date(r.excused_date as string), "EEEE, MMMM d, yyyy") : "—",
+            status: String(r.status).toUpperCase() as "APPROVED" | "DECLINED",
+            declineReason: r.notes ? String(r.notes) : undefined,
+            profileImage: "/images/default-avatar.jpg",
+          }
+        })
+        setHistoryItems(items)
+      }
+      setLoadingHistory(false)
+    }
+
+    fetchPending()
+    fetchHistory()
+  }, [])
+
+  const handleApprove = async (id: string) => {
+    const excuseToMove = excuses.find((excuse) => excuse.id === id)
+    if (!excuseToMove) return
+
+    await fetch("/api/admin/excuses", {
+      method: "PATCH",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ requestId: Number(id), status: "Approved" }),
+    })
+
+    const newHistoryItem: HistoryItem = {
+      ...excuseToMove,
+      id: `h${Date.now()}`,
+      status: "APPROVED",
+    }
+    setHistoryItems([newHistoryItem, ...historyItems])
+    setExcuses(excuses.filter((excuse) => excuse.id !== id))
   }
 
   const handleDeclineClick = (id: string) => {
@@ -194,25 +112,31 @@ export function ExcuseApprovalContent() {
     }
   }
 
-  const handleDeclineConfirm = (reason: string) => {
+  const handleDeclineConfirm = async (reason: string) => {
     if (excuseToDecline) {
-      // Move the excuse from pending to history with DECLINED status
+      await fetch("/api/admin/excuses", {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ requestId: Number(excuseToDecline.id), status: "Rejected", notes: reason }),
+      })
+
       const newHistoryItem: HistoryItem = {
-        id: `h${Date.now()}`, // Generate a new ID
-        name: excuseToDecline.name,
-        voiceSection: excuseToDecline.voiceSection,
-        voiceNumber: excuseToDecline.voiceNumber,
-        type: excuseToDecline.type,
-        date: excuseToDecline.date,
+        ...excuseToDecline,
+        id: `h${Date.now()}`,
         status: "DECLINED",
         declineReason: reason || undefined,
-        profileImage: excuseToDecline.profileImage,
       }
-
       setHistoryItems([newHistoryItem, ...historyItems])
       setExcuses(excuses.filter((excuse) => excuse.id !== excuseToDecline.id))
     } else if (historyItemToDecline) {
-      // Update the history item status to DECLINED
+      await fetch("/api/admin/excuses", {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ requestId: Number(historyItemToDecline.id), status: "Rejected", notes: reason }),
+      })
+
       setHistoryItems(
         historyItems.map((item) =>
           item.id === historyItemToDecline.id
@@ -222,7 +146,6 @@ export function ExcuseApprovalContent() {
       )
     }
 
-    // Close the dialog and reset state
     setIsDeclineDialogOpen(false)
     setExcuseToDecline(null)
     setHistoryItemToDecline(null)
