@@ -95,22 +95,30 @@ For any other new dependency, always use `pnpm add`, never `npm install`.
 ### Colors (use these consistently everywhere)
 | Name | Hex | Usage |
 |---|---|---|
-| Chorale Green (primary) | `#09331f` | Primary buttons, headers, active states, nav |
-| Chorale Green Light | `#0d4a2c` | Hover states |
-| Chorale Gold | `#c9a84c` | Accents, highlights, badges |
-| Soprano Pink | `#ec4899` | Soprano section color |
-| Alto Purple | `#a855f7` | Alto section color |
-| Tenor Blue | `#3b82f6` | Tenor section color |
-| Bass Green | `#22c55e` | Bass section color |
-| Background | `#f9fafb` | Page backgrounds |
-| Surface | `#ffffff` | Cards, modals |
+| Chorale Green (primary) | `#09331f` | Sidebars, nav, large hero fills, footers |
+| Chorale Green Light | `#0d4a2c` | Hover states on green surfaces |
+| Chorale Green Muted | `#e8f0eb` | Light tinted backgrounds, table row hover |
+| Chorale Gold | `#c9a84c` | Accent borders, active indicators, badges, key callouts only |
+| Chorale Gold Muted | `#f5ecd7` | Light gold backgrounds for callout cards |
+| Soprano Pink | `#ec4899` | Soprano section label/badge |
+| Alto Purple | `#a855f7` | Alto section label/badge |
+| Tenor Blue | `#3b82f6` | Tenor section label/badge |
+| Bass Green | `#22c55e` | Bass section label/badge |
+| Background | `#f7f8f6` | Page-level background (very slightly warm, not pure white) |
+| Surface | `#ffffff` | Cards, modals, panels |
+| Surface Elevated | `#fafafa` | Nested cards, inner panels |
+| Border | `#e5e7eb` | Subtle dividers and card borders |
 | Text Primary | `#111827` | Main body text |
-| Text Muted | `#6b7280` | Secondary text |
+| Text Secondary | `#374151` | Sub-headings, labels |
+| Text Muted | `#6b7280` | Captions, helper text |
+| Status: Present | `#16a34a` | Green — attendance present |
+| Status: Late | `#d97706` | Amber — attendance late |
+| Status: Absent | `#dc2626` | Red — attendance absent |
+| Status: Excused | `#2563eb` | Blue — excused absence |
 
 ### Typography
-Replace the current `Arial, Helvetica, sans-serif` font stack in `globals.css` with:
-- **Display / Headings:** `Playfair Display` (Google Fonts) — elegant, musical feel
-- **Body / UI:** `DM Sans` (Google Fonts) — clean, modern, readable
+- **Display / Headings:** `Playfair Display` (Google Fonts) — elegant, musical, editorial feel
+- **Body / UI:** `DM Sans` (Google Fonts) — clean, modern, highly readable at small sizes
 
 Add to `app/layout.tsx`:
 ```tsx
@@ -139,14 +147,92 @@ h1, h2, h3, h4 {
 }
 ```
 
-### Design Principles
-- **Refined + institutional** — this is a university chorale, not a startup. Think elegant, not playful.
-- **Dark green dominates** — `#09331f` is the identity color. Use it boldly on key surfaces.
-- **Gold accents sparingly** — use `#c9a84c` only for highlights, badges, and important callouts.
-- **Generous white space** — cards and sections should breathe.
-- **Subtle depth** — use soft shadows (`shadow-md`, `shadow-lg`) not harsh borders.
-- **Smooth transitions** — all interactive elements should have `transition-all duration-200`.
-- **No purple gradients on white** — avoid generic AI-generated aesthetic clichés.
+### Typographic Scale
+| Role | Tag | Size | Weight | Font |
+|---|---|---|---|---|
+| Page title | h1 | 2.25rem (36px) | 700 | Playfair Display |
+| Section heading | h2 | 1.5rem (24px) | 600 | Playfair Display |
+| Card heading | h3 | 1.125rem (18px) | 600 | Playfair Display |
+| Sub-label | h4 | 0.875rem (14px) | 600 | DM Sans (uppercase, tracked) |
+| Body | p | 0.9375rem (15px) | 400 | DM Sans |
+| Caption / muted | small | 0.8125rem (13px) | 400 | DM Sans |
+| Data / numbers | span | 1.5–2rem | 500 | DM Sans (tabular nums) |
+
+### Design Philosophy
+- **Minimalist elegance** — university chorale, not a startup. Refined and institutional.
+- **Editorial restraint** — think concert program or annual report, not SaaS dashboard.
+- **Generous whitespace** — sections and cards must breathe. No cramped layouts.
+- **Color discipline** — Chorale Green (`#09331f`) for structural surfaces (nav, hero, footer). Gold (`#c9a84c`) appears **at most twice per screen** — accent borders, active states, or one key badge. Never use gold as a large fill.
+- **No decorative clutter** — no gradient overlays on text, no purple/pink gradients, no AI-aesthetic glass cards unless intentional.
+- **Subtle depth** — `shadow-sm` for resting cards, `shadow-md` on hover or modals. Never use `shadow-xl` on regular UI.
+- **Consistent motion** — all interactive elements use `transition-all duration-200 ease-out`. No jarring snaps.
+- **Data-forward** — numbers and status indicators must be immediately readable. Prioritize clarity of information over decoration.
+- **Mobile-first** — every layout must be designed for mobile screen widths first, then expanded for desktop.
+
+### Spacing System
+Use Tailwind's spacing scale consistently. Prefer these values:
+- **Intra-component** (between related elements): `gap-2`, `gap-3`, `space-y-2`
+- **Card padding**: `p-5` or `p-6` (never `p-2` or `p-8` unless justified)
+- **Section spacing**: `py-8 md:py-12`
+- **Page container**: `max-w-5xl mx-auto px-4 md:px-6`
+- **Between cards/rows**: `gap-4` or `gap-6`
+
+### Component Patterns
+
+**Cards**
+```tsx
+// Standard card — use this everywhere, not shadcn Card when custom
+<div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
+```
+
+**Section dividers**
+```tsx
+// Use a thin gold line for major section breaks
+<hr className="border-t border-[#c9a84c]/30 my-8" />
+```
+
+**Status badges**
+```tsx
+// Always use this shape — pill, DM Sans, small, uppercase
+<span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium uppercase tracking-wide">
+```
+
+**Primary button**
+```tsx
+// Green fill, gold text or white text
+<button className="bg-[#09331f] text-white hover:bg-[#0d4a2c] px-5 py-2.5 rounded-lg text-sm font-medium transition-all duration-200">
+```
+
+**Gold accent button (secondary)**
+```tsx
+<button className="border border-[#c9a84c] text-[#09331f] hover:bg-[#f5ecd7] px-5 py-2.5 rounded-lg text-sm font-medium transition-all duration-200">
+```
+
+**Section heading with gold underline**
+```tsx
+<div>
+  <h2 className="font-playfair text-2xl font-semibold text-gray-900">Section Title</h2>
+  <div className="mt-1 h-0.5 w-10 bg-[#c9a84c] rounded-full" />
+</div>
+```
+
+---
+
+## Design Audit Instructions
+
+When asked to audit or improve design on any page, follow this checklist **before writing any code**:
+
+1. **Inventory** — List every Tailwind class used for color, typography, spacing, and shadows on that page/component
+2. **Flag violations** — Identify anything that breaks the rules above (wrong font, wrong color, cramped spacing, too many shadows, gold overuse, etc.)
+3. **Propose changes** — Write a clear list of proposed changes with before/after class names
+4. **Get confirmation** — Show the plan first. Do not start editing until confirmed.
+5. **Apply changes** — Make changes component by component, not all at once
+6. **Verify** — After each component, confirm the change is visually consistent with the design system
+
+When doing a full-site audit:
+- Start with `globals.css` and `app/layout.tsx` (fonts, CSS variables)
+- Then `components/layout/dashboard-nav.tsx` (navigation is seen on every page)
+- Then page by page in order of user frequency: login → dashboard → attendance → profile → admin
 
 ---
 
@@ -217,7 +303,6 @@ Use Framer Motion for:
 
 ### Standard page transition pattern
 ```tsx
-// Wrap page content in:
 import { motion } from 'framer-motion'
 
 <motion.div
@@ -552,55 +637,66 @@ Refer to `CHECKLIST.md` for the full task-by-task breakdown. Here is the high-le
 1. Build `/app/admin/analytics/page.tsx` using Recharts (already installed)
 2. Chart types: attendance trends by section, paalam frequency, fee collection rate
 
-### Phase 7 — Design Upgrade
-See Design section below.
+### Phase 7 — Design Polish
+See Design Audit Instructions section. Apply after all functional phases are complete,
+or apply per-page as each page is built/connected to real data.
 
 ---
 
 ## Design Upgrade Instructions
 
-### Global Changes
-1. **Replace font** in `app/layout.tsx` and `globals.css` — use Playfair Display + DM Sans
-2. **Update CSS variables** in `globals.css` to use Chorale Green as `--primary`:
+### Global Changes (do first, affects everything)
+1. **Replace font** in `app/layout.tsx` and `globals.css` — use Playfair Display + DM Sans (see Brand section)
+2. **Update CSS variables** in `globals.css`:
 ```css
 :root {
-  --primary: 155 71% 13%;          /* #09331f */
+  --primary: 155 71% 13%;             /* #09331f */
   --primary-foreground: 0 0% 98%;
-  --accent: 42 56% 55%;            /* #c9a84c gold */
+  --accent: 42 56% 55%;               /* #c9a84c gold */
   --accent-foreground: 0 0% 9%;
+  --background: 90 14% 97%;           /* #f7f8f6 warm white */
+  --card: 0 0% 100%;
+  --border: 220 13% 91%;
+  --muted: 90 6% 94%;
+  --muted-foreground: 220 9% 46%;
 }
 ```
 3. **Add smooth page transitions** — wrap all page content in a Framer Motion `motion.div`
 
 ### Login Page (`/app/login/page.tsx`)
-- Full-screen layout, split: left panel = Three.js canvas, right panel = login form
-- Three.js scene: dark green background (`#09331f`) with floating `<Stars />` or `<Sparkles />`
-- Add a subtle `<Float>` animated 3D shape (sphere with `MeshDistortMaterial`) in chorale green
-- Login card: dark green background, gold accent border, white text
-- "Sign in with Google" button: white with DLSU Chorale logo
+- Full-screen split layout: left panel = Three.js canvas (60% width), right panel = login form (40%)
+- Three.js scene: dark green background (`#09331f`) with `<Stars />` and one `<Float>` animated sphere using `MeshDistortMaterial` in muted gold
+- Login card: white background, thin gold border (`border border-[#c9a84c]/40`), generous padding
+- Logo above form in Playfair Display, gold subtitle
+- "Sign in with Google" button: outlined style, full width
+- On mobile: stack vertically, Three.js canvas collapses to a decorative top strip (30vh)
 
 ### Dashboard Navigation (`/components/layout/dashboard-nav.tsx`)
-- Dark green sidebar on desktop, bottom nav bar on mobile
-- Active route indicator: gold left border + gold text
-- Add smooth Framer Motion slide-in animation on load
-- Add member's name and section badge in the nav
+- Desktop: dark green sidebar (`bg-[#09331f]`), white icons and labels
+- Active route: gold left border (`border-l-2 border-[#c9a84c]`) + gold text
+- Member name in Playfair Display at top of sidebar, section badge below in section color
+- Mobile: bottom navigation bar, icon + label, active item in gold
+- Add Framer Motion slide-in on initial load
 
 ### Admin Attendance Page (`/app/admin/attendance-overview/page.tsx`)
-- After connecting real data, redesign the day selector as a horizontal scrolling week strip
-- Each day tile: show excuse count as a colored dot (section color)
-- Excuse cards: add Framer Motion staggered entrance
-- Status badge colors: Absent = red, Late = amber, Present = green, Excused = blue
+- Week strip: horizontal scrollable row of day tiles at the top
+- Each tile: day name, date number, colored dot for section activity
+- Excuse request cards: Framer Motion staggered entrance, status badge prominent
+- Section filter: pill buttons in section colors
+- Status badges: use Status color tokens from the color table above
 
 ### Member Profile / Attendance Page (`/app/profile/page.tsx`)
-- Calendar heatmap style — color-coded cells per day (green = present, red = absent, etc.)
-- Fee summary card: gold accent border, clear outstanding amount in large type
-- Add Framer Motion count-up animation on fee totals
+- Calendar heatmap: color-coded day cells (present = green, late = amber, absent = red, excused = blue)
+- Fee summary card: gold accent border, outstanding balance in large Playfair Display type
+- Framer Motion count-up animation on fee totals
+- Attendance list below calendar: clean rows, no heavy borders
 
 ### Attendance Confirmation Screen
-- After RFID tap is logged, show a full-screen confirmation overlay
-- Use Three.js `<Sparkles />` or `<Stars />` for a celebratory particle burst
-- Show member name, section, and timestamp in large Playfair Display type
-- Auto-dismiss after 3 seconds
+- Full-screen overlay after RFID tap
+- Dark green background (`#09331f`)
+- Three.js `<Sparkles />` burst animation
+- Member name in large Playfair Display (white), section + timestamp below
+- Auto-dismiss after 3 seconds with fade-out
 
 ---
 
@@ -723,3 +819,7 @@ Required in Vercel dashboard for production (same keys, production values).
 - Never use `any` type in TypeScript — always type properly or use `unknown`
 - Never push a broken build — run `pnpm build` locally before pushing
 - Never create a new branch that lives longer than one working day before merging
+- Never use gold (`#c9a84c`) as a large background fill — it is an accent only
+- Never introduce gradients unless explicitly specified in the design instructions above
+- Never use font sizes below 13px for any readable text
+- Never mix Playfair Display into body/UI text — it is for headings only
